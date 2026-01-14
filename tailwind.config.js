@@ -1,9 +1,11 @@
-
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
+    "./index.tsx",
+    "./App.tsx",
+    "./types.ts",
+    "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -17,13 +19,17 @@ export default {
           500: '#10b981',
           600: '#059669',
           700: '#047857',
-          800: '#064e3b',
+          800: '#065f46',
           900: '#064e3b',
+          950: '#022c22',
         },
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
+      boxShadow: {
+        'premium': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
+      }
     },
   },
   plugins: [],

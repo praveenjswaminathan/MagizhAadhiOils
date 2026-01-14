@@ -1,7 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { AppState, Customer, Payment, ReturnType } from '../types';
+import { calculateOutstanding } from '../db';
 
 const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => AppState) => void }> = ({ state, updateState }) => {
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -13,7 +13,7 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
     customerId: '',
     amount: 0,
     date: new Date().toISOString().split('T')[0],
-    mode: 'UPI',
+    mode: 'GPay',
     reference: ''
   });
 
@@ -68,12 +68,22 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
 
     updateState(prev => ({ ...prev, payments: [...prev.payments, newPayment] }));
     setShowAddPayment(false);
-    setPaymentForm({ customerId: '', amount: 0, date: new Date().toISOString().split('T')[0], mode: 'UPI', reference: '' });
+    setPaymentForm({ customerId: '', amount: 0, date: new Date().toISOString().split('T')[0], mode: 'GPay', reference: '' });
+  };
+
+  const handleCustomerSelectionForPayment = (cid: string) => {
+    const dues = calculateOutstanding(state, cid);
+    // Auto pre-populate amount with pending dues if they exist
+    setPaymentForm({ 
+        ...paymentForm, 
+        customerId: cid, 
+        amount: dues > 0 ? dues : 0 
+    });
   };
 
   const customerStats = useMemo(() => {
     return state.customers.map(c => {
-      // Calculate Total Sales
+      // Total Gross Sales
       const totalSales = state.sales
         .filter(s => s.customerId === c.id)
         .reduce((sum, s) => {
@@ -82,12 +92,12 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
             .reduce((lSum, sl) => lSum + (sl.qtyL * sl.unitPrice), 0);
         }, 0);
 
-      // Calculate Total Returns (at bought price)
+      // Total Credit from Returns
       const totalReturns = state.returns
         .filter(r => r.customerId === c.id && r.type === ReturnType.CUSTOMER)
         .reduce((sum, r) => sum + (r.qty * r.unitPriceAtReturn), 0);
 
-      // Calculate Total Payments
+      // Total Cash Received
       const totalPayments = state.payments
         .filter(p => p.customerId === c.id)
         .reduce((sum, p) => sum + p.amount, 0);
@@ -114,7 +124,7 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
         <div className="flex gap-2">
           <button 
             onClick={() => { setShowAddPayment(true); setShowAddCustomer(false); setEditingCustomerId(null); }}
-            className="bg-amber-100 text-amber-800 px-6 py-3 rounded-2xl font-black uppercase text-xs border border-amber-200 shadow-sm"
+            className="bg-amber-100 text-amber-800 px-6 py-3 rounded-2xl font-black uppercase text-xs border border-amber-200 shadow-sm active:scale-95 transition-all"
           >
             Record Payment
           </button>
@@ -125,7 +135,7 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
               setEditingCustomerId(null);
               setCustomerForm({ salutation: 'Shri.', name: '', phone: '', notes: '' });
             }}
-            className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-emerald-700 transition-all"
+            className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-emerald-700 transition-all active:scale-95"
           >
             + New Client
           </button>
@@ -180,28 +190,58 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
       )}
 
       {showAddPayment && (
-        <form onSubmit={handleAddPayment} className="bg-white p-10 rounded-[32px] border shadow-2xl space-y-4">
+        <form onSubmit={handleAddPayment} className="bg-white p-10 rounded-[32px] border shadow-2xl space-y-4 animate-in slide-in-from-top duration-300">
           <h2 className="text-xl font-black text-amber-800 uppercase italic">Log Customer Payment</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <select 
-              required className="col-span-2 border rounded-2xl px-4 py-3 bg-slate-50 font-bold"
-              value={paymentForm.customerId} onChange={e => setPaymentForm({...paymentForm, customerId: e.target.value})}
-            >
-              <option value="">Search Customer...</option>
-              {state.customers.map(c => <option key={c.id} value={c.id}>{c.salutation} {c.name}</option>)}
-            </select>
-            <input 
-              type="number" required placeholder="Amount (₹)" className="border rounded-2xl px-4 py-3 font-black"
-              value={paymentForm.amount || ''} onChange={e => setPaymentForm({...paymentForm, amount: parseFloat(e.target.value) || 0})}
-            />
-            <input 
-              type="date" required className="border rounded-2xl px-4 py-3"
-              value={paymentForm.date} onChange={e => setPaymentForm({...paymentForm, date: e.target.value})}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">Select Customer</label>
+              <select 
+                required className="w-full border rounded-2xl px-4 py-3 bg-slate-50 font-bold mt-1"
+                value={paymentForm.customerId} onChange={e => handleCustomerSelectionForPayment(e.target.value)}
+              >
+                <option value="">Search Customer Directory...</option>
+                {state.customers.map(c => <option key={c.id} value={c.id}>{c.salutation} {c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">Amount to Pay (₹)</label>
+              <input 
+                type="number" required placeholder="Amount (₹)" className="w-full border rounded-2xl px-4 py-3 font-black mt-1"
+                value={paymentForm.amount || ''} onChange={e => setPaymentForm({...paymentForm, amount: parseFloat(e.target.value) || 0})}
+              />
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button type="submit" className="flex-grow bg-amber-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">Post Credit to Account</button>
-            <button type="button" onClick={() => setShowAddPayment(false)} className="px-8 border rounded-2xl font-black uppercase text-xs">Cancel</button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">Payment Mode</label>
+              <select 
+                className="w-full border rounded-2xl px-4 py-3 bg-slate-50 font-bold mt-1"
+                value={paymentForm.mode} onChange={e => setPaymentForm({...paymentForm, mode: e.target.value})}
+              >
+                <option value="GPay">GPay (Google Pay)</option>
+                <option value="Cash">Cash Payment</option>
+                <option value="UPI">Other UPI / Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">Ref / Transaction ID</label>
+              <input 
+                placeholder="Reference No." className="w-full border rounded-2xl px-4 py-3 mt-1 font-bold text-xs"
+                value={paymentForm.reference} onChange={e => setPaymentForm({...paymentForm, reference: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">Payment Date</label>
+              <input 
+                type="date" required className="w-full border rounded-2xl px-4 py-3 mt-1"
+                value={paymentForm.date} onChange={e => setPaymentForm({...paymentForm, date: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <button type="submit" className="flex-grow bg-amber-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Post Credit to Account</button>
+            <button type="button" onClick={() => setShowAddPayment(false)} className="px-12 border rounded-2xl font-black uppercase text-xs tracking-widest">Cancel</button>
           </div>
         </form>
       )}
@@ -212,9 +252,9 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
             <tr>
               <th className="px-8 py-5">Customer</th>
               <th className="px-8 py-5">Contact</th>
-              <th className="px-8 py-5 text-right">Total Purchases</th>
-              <th className="px-8 py-5 text-right">Total Paid</th>
-              <th className="px-8 py-5 text-right">Net Balance</th>
+              <th className="px-8 py-5 text-right">Gross Purchases</th>
+              <th className="px-8 py-5 text-right">Total Payments</th>
+              <th className="px-8 py-5 text-right">Current Balance</th>
               <th className="px-8 py-5 text-center">Actions</th>
             </tr>
           </thead>
@@ -266,16 +306,6 @@ const Customers: React.FC<{ state: AppState; updateState: (u: (p: AppState) => A
                 </td>
               </tr>
             ))}
-            {customerStats.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-8 py-20 text-center">
-                  <div className="flex flex-col items-center">
-                    <span className="text-4xl mb-4 opacity-20">👥</span>
-                    <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No customers registered yet</p>
-                  </div>
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

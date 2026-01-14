@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 
 const Auth: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -16,7 +16,16 @@ const Auth: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        if (!username.trim()) throw new Error("Please enter a username");
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              username: username.trim()
+            }
+          }
+        });
         if (error) throw error;
         setMessage('Check your email for confirmation!');
       } else {
@@ -59,12 +68,25 @@ const Auth: React.FC = () => {
          </div>
 
          <form onSubmit={handleAuth} className="space-y-4 text-left">
+           {isSignUp && (
+             <div>
+               <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Full Name / Username</label>
+               <input 
+                 required 
+                 type="text" 
+                 placeholder="Enter your name" 
+                 className="w-full border-2 border-slate-50 rounded-2xl px-6 py-4 outline-none focus:border-emerald-500 bg-slate-50 mt-1 font-bold text-slate-700" 
+                 value={username} 
+                 onChange={e => setUsername(e.target.value)} 
+               />
+             </div>
+           )}
            <div>
              <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Email Address</label>
              <input 
                required 
                type="email" 
-               placeholder="priya@magizh.com" 
+               placeholder="email@example.com" 
                className="w-full border-2 border-slate-50 rounded-2xl px-6 py-4 outline-none focus:border-emerald-500 bg-slate-50 mt-1 font-bold text-slate-700" 
                value={email} 
                onChange={e => setEmail(e.target.value)} 
