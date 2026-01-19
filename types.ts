@@ -1,17 +1,19 @@
 
 export enum ProductType {
-  GINGELLY_JAGGERY = 'நல்லெண்ணெய் - வெல்லம் (Gingelly Oil - Jaggery)',
-  COCONUT = 'தேங்காய் எண்ணெய் (Coconut Oil)',
-  GROUNDNUT = 'கடலை எண்ணெய் (Groundnut Oil)',
-  DEEPAM = 'தீப எண்ணெய் (Deepam Oil)',
-  CASTOR = 'விளக்கெண்ணெய் (Castor Oil)',
-  GINGELLY_PALM_SUGAR = 'நல்லெண்ணெய் - பனை வெல்லம் (Gingelly Oil - Palm Sugar)'
+  GINGELLY_JAGGERY = 'நல்லெண்ணெய் (வெல்லம்) - Gingelly Oil (Jaggery)',
+  COCONUT = 'தேங்காய் எண்ணெய் - Coconut Oil',
+  GROUNDNUT = 'கடலை எண்ணெய் - Groundnut Oil',
+  DEEPAM = 'தீப எண்ணெய் - Deepam Oil',
+  CASTOR = 'விளக்கெண்ணெய் - Castor Oil',
+  GINGELLY_PALM_SUGAR = 'நல்லெண்ணெய் (பனை வெல்லம்) - Gingelly Oil (Palm Sugar)'
 }
 
 export enum ReturnType {
   CUSTOMER = 'Customer Return',
   SUPPLIER = 'Return to Supplier'
 }
+
+export type PaymentType = 'PAYMENT' | 'REFUND';
 
 export interface Hub {
   id: string;
@@ -22,7 +24,7 @@ export interface Hub {
 export interface Customer {
   id: string;
   name: string;
-  salutation: string; // Added salutation
+  salutation: string;
   phone?: string;
   notes?: string;
 }
@@ -82,6 +84,7 @@ export interface Payment {
   customerId: string;
   amount: number;
   mode: string;
+  type?: PaymentType;
   reference?: string;
   notes?: string;
   createdBy?: string;
@@ -93,7 +96,7 @@ export interface ReturnRecord {
   type: ReturnType;
   hubId: string;
   customerId?: string;
-  saleLineId?: string;
+  referenceId?: string; // Links to Sale ID or Consignment ID
   productId: string;
   qty: number;
   unitPriceAtReturn: number;
@@ -112,5 +115,6 @@ export interface AppState {
   saleLines: SaleLine[];
   payments: Payment[];
   returns: ReturnRecord[];
+  adminUsernames: string[];
   currentUser?: string;
 }

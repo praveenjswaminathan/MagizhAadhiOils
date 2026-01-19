@@ -14,3 +14,57 @@
     @apply bg-emerald-800 text-white font-black px-6 py-3 rounded-2xl shadow-xl hover:bg-emerald-900 transition-all uppercase tracking-widest text-xs;
   }
 }
+
+.page-break-after-always {
+  page-break-after: always;
+}
+
+.page-break-before-always {
+  page-break-before: always;
+}
+
+.page-break-inside-avoid {
+  page-break-inside: avoid;
+}
+
+/* Global Print Utilities */
+@media print {
+  @page {
+    margin: 0;
+    size: A4 portrait;
+  }
+  
+  html, body {
+    background: white !important;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print\:hidden, 
+  header, 
+  nav, 
+  footer,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .shadow-premium, .shadow-xl, .shadow-2xl, .shadow-lg, .shadow-sm {
+    box-shadow: none !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
